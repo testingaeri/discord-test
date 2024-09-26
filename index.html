@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App with Accounts</title>
+    <title>Chat App</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             align-items: center;
             padding: 20px;
         }
-        #app {
+        #app, #login, #register {
             width: 400px;
             background: white;
             border-radius: 8px;
@@ -48,17 +48,35 @@
         button:hover {
             background-color: #0056b3;
         }
+        #user-list div {
+            cursor: pointer;
+            padding: 5px;
+            border: 1px solid #ccc;
+            margin: 5px 0;
+        }
+        #user-list div:hover {
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
-    <div id="registration">
+    <div id="register">
         <h1>Create Account</h1>
-        <input id="username-input" placeholder="Username" />
-        <input id="password-input" type="password" placeholder="Password" />
+        <input id="username-input" placeholder="Username" required />
+        <input id="email-input" type="email" placeholder="Email" required />
+        <input id="password-input" type="password" placeholder="Password" required />
         <button id="register-button">Register</button>
         <p id="register-message" style="color: red;"></p>
     </div>
-    
+
+    <div id="login">
+        <h1>Login</h1>
+        <input id="login-email-input" type="email" placeholder="Email" required />
+        <input id="login-password-input" type="password" placeholder="Password" required />
+        <button id="login-button">Login</button>
+        <p id="login-message" style="color: red;"></p>
+    </div>
+
     <div id="app">
         <h1>Chat App</h1>
         <h3>Welcome, <span id="current-user"></span></h3>
@@ -67,17 +85,14 @@
         
         <div id="user-list"></div>
         
-        <div id="messages"></div>
+        <div id="messages" style="display: none;"></div>
         <input id="message-input" placeholder="Type your message here..." />
         <button id="send-button" style="display: none;">Send</button>
     </div>
 
     <script>
-        const usernameInput = document.getElementById('username-input');
-        const passwordInput = document.getElementById('password-input');
-        const registerButton = document.getElementById('register-button');
-        const registerMessage = document.getElementById('register-message');
-
+        const registerDiv = document.getElementById('register');
+        const loginDiv = document.getElementById('login');
         const appDiv = document.getElementById('app');
         const currentUserSpan = document.getElementById('current-user');
         const userInput = document.getElementById('user-input');
@@ -87,49 +102,93 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
 
-        // Handle account creation
-        registerButton.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-
-            if (username && password) {
-                localStorage.setItem('username', username);
-                localStorage.setItem('password', password); // For simplicity, not secure!
-                registerMessage.textContent = '';
-                usernameInput.value = '';
-                passwordInput.value = '';
-                appDiv.style.display = 'block';
-                currentUserSpan.textContent = username;
-            } else {
-                registerMessage.textContent = 'Please enter a valid username and password.';
-            }
-        });
-
-        // User list and messaging
         let currentUser = '';
+        let currentChatUser = '';
 
-        addUserButton.addEventListener('click', () => {
-            const userName = userInput.value.trim();
-            if (userName) {
-                const userElement = document.createElement('div');
-                userElement.textContent = userName;
-                userElement.style.cursor = 'pointer';
-                userElement.addEventListener('click', () => {
-                    currentUser = userName;
-                    messagesDiv.style.display = 'flex';
-                    sendButton.style.display = 'block';
-                    messageInput.value = '';
-                    messagesDiv.innerHTML = ''; // Clear previous messages
+        // Registration logic
+        document.getElementById('register-button').addEventListener('click', async () => {
+            const username = document.getElementById('username-input').value;
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+
+            if (username && email && password) {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
                 });
-                userListDiv.appendChild(userElement);
-                userInput.value = '';
+                const result = await response.json();
+                document.getElementById('register-message').textContent = result.message;
+                if (result.success) {
+                    registerDiv.style.display = 'none';
+                    loginDiv.style.display = 'block';
+                }
             }
         });
 
+        // Login logic
+        document.getElementById('login-button').addEventListener('click', async () => {
+            const email = document.getElementById('login-email-input').value;
+            const password = document.getElementById('login-password-input').value;
+
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const result = await response.json();
+            document.getElementById('login-message').textContent = result.message;
+            if (result.success) {
+                currentUser = result.username;
+                currentUserSpan.textContent = currentUser;
+                loginDiv.style.display = 'none';
+                appDiv.style.display = 'block';
+                loadUsers(); // Load users from the server
+            }
+        });
+
+async function loadUsers() {
+    try {
+        const response = await fetch('/users', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            // Include authentication token if needed
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch users');
+        }
+
+        const users = await response.json(); // Assuming the server responds with an array of users
+        userListDiv.innerHTML = ''; // Clear previous user list
+        users.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.textContent = user.username; // Adjust based on your user object structure
+            userElement.addEventListener('click', () => {
+                currentChatUser = user.username; // Set the current chat user
+                startChat();
+            });
+            userListDiv.appendChild(userElement);
+        });
+    } catch (error) {
+        console.error(error);
+        alert('Error loading users. Please try again later.');
+    }
+}
+
+
+        function startChat() {
+            messagesDiv.style.display = 'block';
+            messagesDiv.innerHTML = ''; // Clear previous messages
+            messageInput.value = '';
+            sendButton.style.display = 'block';
+        }
+
+        // Sending messages
         sendButton.addEventListener('click', () => {
-            if (currentUser && messageInput.value) {
+            if (currentChatUser && messageInput.value) {
                 const msgElement = document.createElement('div');
-                msgElement.textContent = `${currentUser}: ${messageInput.value}`;
+                msgElement.textContent = `${currentUser} to ${currentChatUser}: ${messageInput.value}`;
                 messagesDiv.appendChild(msgElement);
                 messageInput.value = '';
                 messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
@@ -141,6 +200,9 @@
                 sendButton.click();
             }
         });
+
+        // Show registration form initially
+        registerDiv.style.display = 'block';
     </script>
 </body>
 </html>
