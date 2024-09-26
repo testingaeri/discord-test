@@ -147,51 +147,48 @@
             }
         });
 
-async function loadUsers() {
-    try {
-        const response = await fetch('/users', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            // Include authentication token if needed
-        });
+        async function loadUsers() {
+            try {
+                const response = await fetch('/users', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
 
-        if (!response.ok) {
-            throw new Error('Failed to fetch users');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+
+                const users = await response.json(); 
+                userListDiv.innerHTML = ''; 
+                users.forEach(user => {
+                    const userElement = document.createElement('div');
+                    userElement.textContent = user.username; 
+                    userElement.addEventListener('click', () => {
+                        currentChatUser = user.username; 
+                        startChat();
+                    });
+                    userListDiv.appendChild(userElement);
+                });
+            } catch (error) {
+                console.error(error);
+                alert('Error loading users. Please try again later.');
+            }
         }
-
-        const users = await response.json(); // Assuming the server responds with an array of users
-        userListDiv.innerHTML = ''; // Clear previous user list
-        users.forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.textContent = user.username; // Adjust based on your user object structure
-            userElement.addEventListener('click', () => {
-                currentChatUser = user.username; // Set the current chat user
-                startChat();
-            });
-            userListDiv.appendChild(userElement);
-        });
-    } catch (error) {
-        console.error(error);
-        alert('Error loading users. Please try again later.');
-    }
-}
-
 
         function startChat() {
             messagesDiv.style.display = 'block';
-            messagesDiv.innerHTML = ''; // Clear previous messages
+            messagesDiv.innerHTML = ''; 
             messageInput.value = '';
             sendButton.style.display = 'block';
         }
 
-        // Sending messages
         sendButton.addEventListener('click', () => {
             if (currentChatUser && messageInput.value) {
                 const msgElement = document.createElement('div');
                 msgElement.textContent = `${currentUser} to ${currentChatUser}: ${messageInput.value}`;
                 messagesDiv.appendChild(msgElement);
                 messageInput.value = '';
-                messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll
+                messagesDiv.scrollTop = messagesDiv.scrollHeight; 
             }
         });
 
